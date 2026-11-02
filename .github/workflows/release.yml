@@ -95,9 +95,12 @@ jobs:
       - name: Generate the native Android project
         run: npx expo prebuild --platform android --no-install
 
+      # 64-bit ARM only: every current Android phone. Skipping armeabi-v7a, x86 and x86_64 native
+      # libraries cuts the APK to a fraction of the universal size (old 32-bit phones and x86
+      # emulators can't install it).
       - name: Build the release APK
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
 
       # The generated project signs release builds with a debug key; re-sign with the real one.
       - name: Sign the APK
@@ -108,7 +111,7 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
-            echo "::error::Missing signing secrets. See docs/releasing.md (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD)."
+            echo "::error::Missing signing secrets. See docs/releasing.md (KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD)."
             exit 1
           fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
@@ -122,6 +125,8 @@ jobs:
             --out "dist/ledgerly-$TAG-android.apk" \
             android/app/build/outputs/apk/release/app-release.apk
           "$build_tools/apksigner" verify --print-certs "dist/ledgerly-$TAG-android.apk"
+          python3 -c "import sys, zipfile; print('Native libraries:', ' '.join(sorted({n.split('/')[1] for n in zipfile.ZipFile(sys.argv[1]).namelist() if n.startswith('lib/')})))" "dist/ledgerly-$TAG-android.apk"
+          ls -lh "dist/ledgerly-$TAG-android.apk"
           rm "$RUNNER_TEMP/release.jks"
 
       - uses: actions/upload-artifact@v4
@@ -183,7 +188,7 @@ jobs:
           cat > notes.md <<EOF
           ## Install
 
-          - **Android:** download \`ledgerly-$TAG-android.apk\` below on your phone and open it. Allow installs from your browser or files app when asked.
+          - **Android:** download \`ledgerly-$TAG-android.apk\` below on your phone and open it. Allow installs from your browser or files app when asked. Needs a 64-bit phone (any made in recent years).
           - **iPhone:** open $WEB_URL in Safari, tap Share, then **Add to Home Screen**. It updates itself when a new release is out.
           EOF
           gh release create "$TAG" dist/*.apk \

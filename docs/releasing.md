@@ -23,10 +23,10 @@ Then add four secrets under the repo's *Settings › Secrets and variables › A
 
 | Secret | Value |
 | --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | output of `base64 -w0 ledgerly-release.jks` |
-| `ANDROID_KEYSTORE_PASSWORD` | the keystore password |
-| `ANDROID_KEY_ALIAS` | `ledgerly` (the `-alias` above) |
-| `ANDROID_KEY_PASSWORD` | the key password (same as the keystore password unless you set one) |
+| `KEYSTORE_BASE64` | output of `base64 -w0 ledgerly-release.jks` |
+| `KEYSTORE_PASSWORD` | the keystore password |
+| `KEY_ALIAS` | `ledgerly` (the `-alias` above) |
+| `KEY_PASSWORD` | the key password (same as the keystore password unless you set one) |
 
 Don't commit the `.jks` file; `.gitignore` already excludes it.
 
@@ -54,6 +54,10 @@ The site lives under `/Ledgerly/`, set by `experiments.baseUrl` in `app.json` an
 The workflow checks the tag matches `app.json`, lints and typechecks, then in parallel builds the APK
 and deploys the web app, and finally publishes the release with `ledgerly-v1.1.0-android.apk` and
 install instructions for both platforms.
+
+The APK contains 64-bit ARM (`arm64-v8a`) code only, which covers every current Android phone and
+keeps the download small. Old 32-bit phones and x86 emulators can't install it; to support them,
+drop `-PreactNativeArchitectures=arm64-v8a` from the Gradle step (the APK grows several times over).
 
 Android's `versionCode` comes from the tag (`v1.2.3` → `10203`), so minor and patch numbers must
 stay below 100.
