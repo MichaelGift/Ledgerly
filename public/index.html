@@ -37,6 +37,13 @@
       // the on-device database). A page that loads without them (the first visit, before the
       // worker is in control, or a hard refresh, which skips it) reloads through the worker.
       // The timestamp stops a reload loop in browsers that can't be isolated (see isolation.web.ts).
+      // Chrome/Edge offer installation through this event, often before the app has loaded.
+      // Hold on to it for the in-app install prompt (src/components/install-prompt.web.tsx).
+      window.addEventListener('beforeinstallprompt', function (event) {
+        event.preventDefault();
+        window.__ledgerlyInstallEvent = event;
+        window.dispatchEvent(new Event('ledgerly-installable'));
+      });
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/Ledgerly/sw.js', { scope: '/Ledgerly/' });
         if (!window.crossOriginIsolated) {

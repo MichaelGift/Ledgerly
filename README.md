@@ -1,56 +1,107 @@
-# Welcome to your Expo app 👋
+# Ledgerly
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A spending tracker for Android and iPhone. Record expenses and income in a couple of taps, then see
+where the money goes: month overviews, six-month trends, and an analysis playground you drive by
+building a sentence ("Show **total spent** by **week** over **3 months** in **Food**").
 
-## Get started
+Everything is stored on your device. Syncing through a shared backend is planned; the data model is
+already built for it.
 
-1. Install dependencies
+## Install
 
-   ```bash
-   npm install
-   ```
+- **Android:** download the latest `ledgerly-…-android.apk` from
+  [Releases](https://github.com/MichaelGift/Ledgerly/releases/latest) on your phone and open it.
+  Allow installs from your browser or files app when asked.
+- **iPhone:** open <https://michaelgift.github.io/Ledgerly/> in Safari, tap **Share**, then
+  **Add to Home Screen**. The app offers this itself on first visit. Install it before adding
+  entries: the home screen app keeps its own data, separate from Safari's.
 
-2. Start the app
+The web app (a PWA) works offline after the first visit and updates itself after each release.
 
-   ```bash
-   npx expo start
-   ```
+## Features
 
-In the output, you'll find options to open the app in a
+- **Overview:** the month's spending, a 14-day sparkline, comparison with the same point last month,
+  income and net, top categories, and the last six months.
+- **Activity:** every transaction, grouped by day, for any month.
+- **Quick entry:** a keypad sheet with categories, date and note; edit or delete any entry.
+- **Last 6 months:** spent against income per month, with month-on-month change.
+- **Analyse:** total spent, income, net, transaction count or average spend, by day, week, month,
+  category or weekday, over 7 days to 12 months; with average line, previous-period comparison and
+  per-category stacks.
+- **Settings:** default currency, category list, and CSV export of everything.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Development
 
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Requires Node.js (24, as used in CI) and npm.
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+```bash
+npm start
+```
 
-### Other setup steps
+Then open the app in [Expo Go](https://expo.dev/go) by scanning the QR code, or press `w` for the
+web version (served at `http://localhost:8081/Ledgerly`). Everything the app uses runs in Expo Go;
+no native build is needed for day-to-day work.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| Script | What it does |
+| --- | --- |
+| `npm start` | Start the Expo dev server |
+| `npm run web` | Start the dev server and open the web app |
+| `npm run lint` | Lint with ESLint (`npx tsc --noEmit` typechecks) |
+| `npm run build:web` | Build the installable web app into `dist/` |
+| `npm run icons` | Regenerate every icon and splash image from `scripts/generate-icons.mjs` |
 
-## Learn more
+### Stack
 
-To learn more about developing your project with Expo, look at the following resources:
+[Expo](https://expo.dev) SDK 58 with Expo Router, React Native 0.88 and the React Compiler.
+Data lives in SQLite via `expo-sqlite` (its WebAssembly build on the web). Charts are drawn with
+`react-native-svg`; type is Space Grotesk and Inter.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Project layout
 
-## Join the community
+```
+src/
+  app/                 Screens (file-based routes)
+    (tabs)/(home)/     Overview, Last 6 months, Analyse
+    (tabs)/            Activity and Settings tabs
+    transaction.tsx    Add / edit sheet
+  components/          UI building blocks and charts (*.web.tsx = web-specific versions)
+  db/                  Schema, migrations and queries
+  hooks/               Live queries, currency, theme
+  utils/               Dates, money, analysis, CSV export
+  constants/           Design tokens and the chart palette
+public/                Web app shell, manifest and service worker
+scripts/               Icon generator and web build
+```
 
-Join our community of developers creating universal apps.
+### Data and sync readiness
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Every row has a client-generated UUID, an `updated_at` timestamp for last-write-wins merging, a
+soft-delete `deleted_at`, and a `dirty` flag for changes not yet pushed. Amounts are stored as
+integer minor units (cents) with their currency. Schema changes go through numbered migrations in
+`src/db/schema.ts`.
+
+The web build needs a cross-origin isolated page for SQLite; `public/sw.js` provides it on hosts
+like GitHub Pages that can't set headers. See [docs/releasing.md](docs/releasing.md#how-the-web-app-stores-data).
+
+## Releasing
+
+Push a version tag that matches `expo.version` in `app.json`:
+
+```bash
+git tag v1.1.0
+```
+
+```bash
+git push origin v1.1.0
+```
+
+GitHub Actions builds and signs the Android APK, deploys the web app to GitHub Pages, and publishes
+the release. One-time setup (signing key, Pages) is in [docs/releasing.md](docs/releasing.md).
+
+## License
+
+See [LICENSE](LICENSE).
