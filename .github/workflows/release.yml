@@ -1,0 +1,194 @@
+# Releases Ledgerly from a version tag:
+# - Android: a signed APK built with Gradle on a GitHub runner, attached to the GitHub Release.
+# - iOS (and any browser): the installable web app (PWA), deployed to GitHub Pages.
+#
+# Trigger: push a tag matching app.json's version (`git tag v1.0.0 && git push origin v1.0.0`),
+# or run it from the Actions tab with a tag name. One-time setup is in docs/releasing.md.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to release, e.g. v1.0.0 (created on the selected branch's head if it doesn't exist)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check tag matches the app version
+        run: |
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag '$TAG' must look like v1.2.3"
+            exit 1
+          fi
+          version=$(node -p "require('./app.json').expo.version")
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::Tag $TAG does not match app.json version $version. Bump expo.version or use tag v$version."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint and typecheck
+        run: |
+          npx expo lint
+          npx tsc --noEmit
+
+  android:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      # Android Gradle Plugin 9 (React Native 0.88) needs JDK 17.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+
+      # versionCode must grow with every release: v1.2.3 becomes 10203.
+      - name: Set Android versionCode from the tag
+        run: |
+          node -e '
+            const fs = require("fs");
+            const [major, minor, patch] = process.env.TAG.slice(1).split(".").map(Number);
+            if (minor > 99 || patch > 99) throw new Error("Minor and patch versions must be below 100");
+            const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
+            app.expo.android.versionCode = major * 10000 + minor * 100 + patch;
+            fs.writeFileSync("app.json", JSON.stringify(app, null, 2));
+            console.log("versionCode", app.expo.android.versionCode);
+          '
+
+      - name: Generate the native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build the release APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon
+
+      # The generated project signs release builds with a debug key; re-sign with the real one.
+      - name: Sign the APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
+            echo "::error::Missing signing secrets. See docs/releasing.md (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD)."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          build_tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          mkdir -p dist
+          "$build_tools/apksigner" sign \
+            --ks "$RUNNER_TEMP/release.jks" \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:ANDROID_KEY_PASSWORD \
+            --out "dist/ledgerly-$TAG-android.apk" \
+            android/app/build/outputs/apk/release/app-release.apk
+          "$build_tools/apksigner" verify --print-certs "dist/ledgerly-$TAG-android.apk"
+          rm "$RUNNER_TEMP/release.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: dist/ledgerly-*-android.apk
+          if-no-files-found: error
+
+  web:
+    needs: checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    outputs:
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build the web app (PWA)
+        run: BUILD_VERSION="$TAG" npm run build:web
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  release:
+    needs: [android, web]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: dist
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WEB_URL: ${{ needs.web.outputs.url }}
+        run: |
+          cat > notes.md <<EOF
+          ## Install
+
+          - **Android:** download \`ledgerly-$TAG-android.apk\` below on your phone and open it. Allow installs from your browser or files app when asked.
+          - **iPhone:** open $WEB_URL in Safari, tap Share, then **Add to Home Screen**. It updates itself when a new release is out.
+          EOF
+          gh release create "$TAG" dist/*.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Ledgerly $TAG" \
+            --notes-file notes.md \
+            --generate-notes

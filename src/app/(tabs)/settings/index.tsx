@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ListGroup, ListRow } from '@/components/list-group';
@@ -15,6 +15,7 @@ import { countCategories, setSetting } from '@/db/repository';
 import { useCurrency } from '@/hooks/use-currency';
 import { useLiveQuery } from '@/hooks/use-live-query';
 import { useTheme } from '@/hooks/use-theme';
+import { showError } from '@/utils/dialogs';
 import { exportTransactionsCsv } from '@/utils/export';
 import { successHaptic, tapHaptic } from '@/utils/haptics';
 import { COMMON_CURRENCIES } from '@/utils/money';
@@ -34,7 +35,7 @@ export default function SettingsScreen() {
       await exportTransactionsCsv(db);
       successHaptic();
     } catch (error) {
-      Alert.alert('Export failed', String(error));
+      showError('Export failed', String(error));
     } finally {
       setExporting(false);
     }

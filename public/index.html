@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>%WEB_TITLE%</title>
+    <!-- Installable app (PWA). Paths include the GitHub Pages base path, matching experiments.baseUrl in app.json. -->
+    <meta name="theme-color" content="#0E1022" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Ledgerly" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/Ledgerly/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/Ledgerly/icons/apple-touch-icon.png" />
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+        background-color: #0e1022;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+    <script>
+      // The service worker adds the headers that make the page cross-origin isolated (needed by
+      // the on-device database). A page that loads without them (the first visit, before the
+      // worker is in control, or a hard refresh, which skips it) reloads through the worker.
+      // The timestamp stops a reload loop in browsers that can't be isolated (see isolation.web.ts).
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/Ledgerly/sw.js', { scope: '/Ledgerly/' });
+        if (!window.crossOriginIsolated) {
+          navigator.serviceWorker.ready.then(function () {
+            var lastReload = Number(sessionStorage.getItem('ledgerly-isolation-reload') || 0);
+            if (Date.now() - lastReload > 10000) {
+              sessionStorage.setItem('ledgerly-isolation-reload', String(Date.now()));
+              location.reload();
+            }
+          });
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <noscript> You need to enable JavaScript to run this app. </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  </body>
+</html>

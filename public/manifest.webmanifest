@@ -1,0 +1,17 @@
+{
+  "id": "/Ledgerly/",
+  "name": "Ledgerly",
+  "short_name": "Ledgerly",
+  "description": "Track your spending, stored on your device.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E1022",
+  "theme_color": "#0E1022",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

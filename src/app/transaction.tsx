@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryIcon } from '@/components/category-icon';
@@ -26,6 +26,7 @@ import { useCurrency } from '@/hooks/use-currency';
 import { useLiveQuery } from '@/hooks/use-live-query';
 import { useTheme } from '@/hooks/use-theme';
 import { formatDay, todayKey } from '@/utils/dates';
+import { confirmDestructive, showError } from '@/utils/dialogs';
 import { successHaptic } from '@/utils/haptics';
 import { fractionDigits, minorToInput, parseAmount } from '@/utils/money';
 
@@ -124,23 +125,16 @@ function TransactionForm({
       router.back();
     } catch (error) {
       setSaving(false);
-      Alert.alert('Could not save', String(error));
+      showError('Could not save', String(error));
     }
   }
 
   function confirmDelete() {
     if (!existing) return;
-    Alert.alert('Delete transaction?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteTransaction(db, existing.id);
-          router.back();
-        },
-      },
-    ]);
+    confirmDestructive('Delete transaction?', 'This cannot be undone.', 'Delete', async () => {
+      await deleteTransaction(db, existing.id);
+      router.back();
+    });
   }
 
   return (
