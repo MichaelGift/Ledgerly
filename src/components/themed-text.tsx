@@ -1,10 +1,20 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/constants/theme';
+import { FontFamily, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
-  type?: 'default' | 'title' | 'small' | 'smallBold' | 'subtitle' | 'link' | 'linkPrimary' | 'code';
+  type?:
+    | 'display'
+    | 'title'
+    | 'heading'
+    | 'number'
+    | 'default'
+    | 'medium'
+    | 'small'
+    | 'smallBold'
+    | 'caption'
+    | 'label';
   themeColor?: ThemeColor;
 };
 
@@ -15,43 +25,62 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 }
 
 const styles = StyleSheet.create({
-  small: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 500,
-  },
-  smallBold: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 700,
-  },
-  default: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: 500,
+  /** Hero amounts. */
+  display: {
+    fontFamily: FontFamily.display,
+    fontSize: 42,
+    lineHeight: 46,
+    letterSpacing: -1.5,
   },
   title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
+    fontFamily: FontFamily.displaySemiBold,
+    fontSize: 26,
+    lineHeight: 32,
+    letterSpacing: -0.5,
   },
-  subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
-    fontWeight: 600,
+  heading: {
+    fontFamily: FontFamily.displaySemiBold,
+    fontSize: 16,
+    lineHeight: 22,
   },
-  link: {
-    lineHeight: 30,
+  /** Amounts in lists and tiles. */
+  number: {
+    fontFamily: FontFamily.displaySemiBold,
+    fontSize: 15,
+    lineHeight: 20,
+    fontVariant: ['tabular-nums'],
+  },
+  default: {
+    fontFamily: FontFamily.body,
     fontSize: 14,
+    lineHeight: 20,
   },
-  linkPrimary: {
-    lineHeight: 30,
+  medium: {
+    fontFamily: FontFamily.bodySemiBold,
     fontSize: 14,
-    color: '#3c87f7',
+    lineHeight: 20,
   },
-  code: {
-    fontFamily: Fonts.mono,
-    fontWeight: Platform.select({ android: 700 }) ?? 500,
+  small: {
+    fontFamily: FontFamily.bodyMedium,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  smallBold: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  caption: {
+    fontFamily: FontFamily.body,
     fontSize: 12,
+    lineHeight: 16,
+  },
+  /** Small uppercase section labels. */
+  label: {
+    fontFamily: FontFamily.bodySemiBold,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
 });

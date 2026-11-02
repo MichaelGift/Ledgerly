@@ -1,14 +1,12 @@
-/**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
- */
-
+import { resolveSeriesColor } from '@/constants/palette';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
+/** The app is dark-only (Night Market). */
 export function useTheme() {
-  const scheme = useColorScheme();
-  const theme = scheme === 'dark' ? 'dark' : 'light';
+  return Colors.dark;
+}
 
-  return Colors[theme];
+/** Resolves a stored category/series color (a palette slot name) to its hex value. */
+export function useSeriesColor() {
+  return (color: string | null) => resolveSeriesColor(color, 'dark');
 }
