@@ -3,8 +3,6 @@
  * The app is dark-only, so both schemes resolve to the same palette.
  */
 
-import '@/global.css';
-
 const Night = {
   text: '#F2F3FA',
   textSecondary: '#9EA3C7',
